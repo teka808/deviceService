@@ -28,7 +28,6 @@ func Init() {
 }
 
 func (mq *mq) OpenChannel() {
-	log.Println("RABBITMQ_CONNECT", mq.conn)
 	channelRabbitMQ, err := mq.conn.Channel()
 	if err != nil {
 		panic(err)
@@ -59,39 +58,37 @@ func (mq *mq) Consume() {
 	}
 	log.Println("Successfully connected to RabbitMQ")
 
-	consumer := make(chan bool)
-
 	go func() {
-		for message := range messages {
+		for {
+			select {
+			case data := <-messages:
 
-			var info map[string]interface{}
-			e := json.Unmarshal(message.Body, &info)
+				var info map[string]interface{}
+				e := json.Unmarshal(data.Body, &info)
 
-			// panic on error
-			if e != nil {
-				panic(e)
-			}
-
-			for _, v := range info {
-				coordinates := v.(map[string]interface{})["coordinates"]
-				latitude := 0.0
-				longitude := 0.0
-				if coordinates != nil {
-					latitude = v.(map[string]interface{})["coordinates"].([]interface{})[0].(float64)
-					longitude = v.(map[string]interface{})["coordinates"].([]interface{})[1].(float64)
+				if e != nil {
+					panic(e)
 				}
-				db.InsertOrUpdate(
-					v.(map[string]interface{})["id"].(string),
-					v.(map[string]interface{})["type"].(string),
-					latitude,
-					longitude,
-					v.(map[string]interface{})["status"].(string),
-					v.(map[string]interface{})["timezone"].(string),
-				)
-				log.Println("Inserted/Updated data")
+
+				for _, v := range info {
+					coordinates := v.(map[string]interface{})["coordinates"]
+					latitude := 0.0
+					longitude := 0.0
+					if coordinates != nil {
+						latitude = v.(map[string]interface{})["coordinates"].([]interface{})[0].(float64)
+						longitude = v.(map[string]interface{})["coordinates"].([]interface{})[1].(float64)
+					}
+					db.InsertOrUpdate(
+						v.(map[string]interface{})["id"].(string),
+						v.(map[string]interface{})["type"].(string),
+						latitude,
+						longitude,
+						v.(map[string]interface{})["status"].(string),
+						v.(map[string]interface{})["timezone"].(string),
+					)
+					log.Println("Inserted/Updated data")
+				}
 			}
 		}
 	}()
-
-	<-consumer
 }
