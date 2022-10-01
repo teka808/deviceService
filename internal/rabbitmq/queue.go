@@ -1,9 +1,11 @@
 package rabbitmq
 
 import (
+	"encoding/json"
 	"github.com/streadway/amqp"
 	"log"
 	"test/internal/config"
+	"test/internal/db"
 )
 
 type mq struct {
@@ -18,6 +20,7 @@ func Init() {
 	if err != nil {
 		panic(err)
 	}
+
 	mq.conn = mqConn
 
 	mq.OpenChannel()
@@ -50,6 +53,7 @@ func (mq *mq) Consume() {
 		false,                         // no wait
 		nil,                           // arguments
 	)
+
 	if err != nil {
 		log.Println(err)
 	}
@@ -59,8 +63,33 @@ func (mq *mq) Consume() {
 
 	go func() {
 		for message := range messages {
-			// For example, show received message in a console.
-			log.Printf(" > Received message: %s\n", message.Body)
+
+			var info map[string]interface{}
+			e := json.Unmarshal(message.Body, &info)
+
+			// panic on error
+			if e != nil {
+				panic(e)
+			}
+
+			for _, v := range info {
+				coordinates := v.(map[string]interface{})["coordinates"]
+				latitude := 0.0
+				longitude := 0.0
+				if coordinates != nil {
+					latitude = v.(map[string]interface{})["coordinates"].([]interface{})[0].(float64)
+					longitude = v.(map[string]interface{})["coordinates"].([]interface{})[1].(float64)
+				}
+				db.InsertOrUpdate(
+					v.(map[string]interface{})["id"].(string),
+					v.(map[string]interface{})["type"].(string),
+					latitude,
+					longitude,
+					v.(map[string]interface{})["status"].(string),
+					v.(map[string]interface{})["timezone"].(string),
+				)
+				log.Println("Inserted/Updated data")
+			}
 		}
 	}()
 
