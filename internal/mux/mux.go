@@ -23,5 +23,5 @@ func Init() {
 }
 
 func (r *mRouter) setHandlers() {
-	r.router.HandleFunc("/categories/{category}", handlers.CategoriesHandler)
+	r.router.HandleFunc("/update", handlers.UpdatesHandler)
 }

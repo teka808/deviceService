@@ -6,7 +6,8 @@ import (
 	"test/internal/utils"
 )
 
-func CategoriesHandler(w http.ResponseWriter, r *http.Request) {
+func UpdatesHandler(w http.ResponseWriter, r *http.Request) {
 	vars := utils.GetVars(w, r)
+
 	fmt.Fprintf(w, "Category: %v\n", vars["category"])
 }
